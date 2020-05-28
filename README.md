@@ -2,7 +2,7 @@
 
 This project is for hyperledger fabric study.
 
-fabric version : 1.4.x
+Fabric version : 1.4.3
 
 ### docker list
 - ca.org1.example.com
