@@ -4,20 +4,13 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# Exit on first error, print all commands.
-set -e
+# Exit on first error
+set -ex
 
-# Shut down the Docker containers for the system tests.
-docker-compose -f docker-compose.yml kill && docker-compose -f docker-compose.yml down
+# Bring the test network down
+sh ./network.sh down
 
-# remove the local state
-rm -f ~/.hfc-key-store/*
-
-# remove couchdb data
-rm -rf ./data
-
-# remove chaincode docker images
-docker rm $(docker ps -aq)
-# docker rmi $(docker images -a -q)
-
-# Your system is now clean
+# clean out any old identites in the wallets
+rm -rf javascript/wallet/*
+rm -rf java/wallet/*
+rm -rf typescript/wallet/*

@@ -4,22 +4,48 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# Exit on first error, print all commands.
+# Exit on first error
+set -e
 
-rm -rf ./config
-mkdir config
-rm -rf crypto-config
+# don't rewrite paths for Windows Git Bash users
+export MSYS_NO_PATHCONV=1
+starttime=$(date +%s)
+CC_SRC_LANGUAGE=${1:-"go"}
+CC_SRC_LANGUAGE=`echo "$CC_SRC_LANGUAGE" | tr [:upper:] [:lower:]`
+CC_SRC_PATH="./chaincode/fabcar/go/"
 
-export PATH=./bin:$PATH
-cryptogen generate --config=./crypto-config.yaml
 
-configtxgen -profile OneOrgOrdererGenesis -outputBlock ./config/genesis.block
+# clean out any old identites in the wallets
+rm -rf go/wallet/*
 
-configtxgen -profile OneOrgChannel -outputCreateChannelTx ./config/channel.tx -channelID mychannel
+# launch network; create channel and join peer to channel
+sh ./network.sh down
+sh ./network.sh up createChannel -ca -s couchdb
 
-configtxgen -profile OneOrgChannel -outputAnchorPeersUpdate ./config/Org1MSPanchors.tx -channelID mychannel -asOrg Org1MSP
+# install fabcar chaincode
+sh ./network.sh deployCC -ccn fabcar -ccv 1 -cci initLedger -ccl ${CC_SRC_LANGUAGE} -ccp ${CC_SRC_PATH}
 
-export SK_NAME=$(cd crypto-config/peerOrganizations/org1.example.com/ca && ls *_sk)
-SK_NAME=$SK_NAME docker-compose -f docker-compose.yml up -d ca.example.com orderer.example.com peer0.org1.example.com couchdb cli peer1.org1.example.com orderer2.example.com orderer3.example.com
+cat <<EOF
 
-docker exec cli ./scripts/script.sh mychannel 3 golang
+Total setup execution time : $(($(date +%s) - starttime)) secs ...
+
+Next, use the FabCar applications to interact with the deployed FabCar contract.
+The FabCar applications are available in multiple programming languages.
+Follow the instructions for the programming language of your choice:
+
+Go:
+
+  Start by changing into the "go" directory:
+    cd ./chaincode/fabcar/go
+
+  Then, install dependencies and run the test using:
+    go run fabcar.go
+
+  The test will invoke the sample client app which perform the following:
+    - Import user credentials into the wallet (if they don't already exist there)
+    - Submit a transaction to create a new car
+    - Evaluate a transaction (query) to return details of this car
+    - Submit a transaction to change the owner of this car
+    - Evaluate a transaction (query) to return the updated details of this car
+
+EOF
